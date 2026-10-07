@@ -17,7 +17,10 @@ from app.features.cms.router import (
     settings_admin_router as cms_settings_admin_router,
     settings_public_router as cms_settings_public_router,
 )
-
+from app.features.newsroom.router import (
+    admin_router as newsroom_admin_router,
+    public_router as newsroom_public_router,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,6 +52,8 @@ app.include_router(cms_projects_admin_router)
 app.include_router(cms_projects_public_router)
 app.include_router(cms_settings_public_router)
 app.include_router(cms_settings_admin_router)
+app.include_router(newsroom_public_router)
+app.include_router(newsroom_admin_router)
 
 
 @app.get("/health")

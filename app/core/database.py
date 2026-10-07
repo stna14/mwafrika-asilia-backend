@@ -29,6 +29,7 @@ def init_db() -> None:
     """Create all tables. Import feature models here as they are built."""
     from app.features.admin_auth import models as _admin_auth_models  # noqa: F401
     from app.features.cms import models as _cms_models  # noqa: F401
+    from app.features.newsroom import models as _newsroom_models  # noqa: F401
 
 
     Base.metadata.create_all(bind=engine)
