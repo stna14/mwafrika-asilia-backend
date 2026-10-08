@@ -35,6 +35,6 @@ def init_db() -> None:
     from app.features.gallery import models as _gallery_models  # noqa: F401
     from app.features.ticketing import models as _ticketing_models  # noqa: F401
     from app.features.talent import models as _talent_models  # noqa: F401
-
+    from app.features.media_library import models as _media_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

@@ -63,3 +63,5 @@ dmypy.json
 *.sqlite3
 *.log
 bandit-report.json
+uploads/*
+!uploads/.gitkeep

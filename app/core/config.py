@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440
 
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     @property
     def database_url(self) -> str:
@@ -34,6 +36,16 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def upload_path(self):
+        from pathlib import Path
+
+        return Path(self.UPLOAD_DIR).resolve()
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 
 settings = Settings()
