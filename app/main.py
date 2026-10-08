@@ -7,6 +7,10 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine, init_db
 from app.features.admin_auth.router import router as admin_auth_router
+from app.features.gallery.router import (
+    admin_router as gallery_admin_router,
+    public_router as gallery_public_router,
+)
 from app.features.cms.router import (
     admin_router as cms_admin_router,
     pages_admin_router as cms_pages_admin_router,
@@ -20,6 +24,20 @@ from app.features.cms.router import (
 from app.features.newsroom.router import (
     admin_router as newsroom_admin_router,
     public_router as newsroom_public_router,
+)
+from app.features.ticketing.router import (
+    admin_router as ticketing_admin_router,
+    public_router as ticketing_public_router,
+)
+from app.features.talent.router import (
+    admin_router as talent_admin_router,
+    public_router as talent_public_router,
+)
+from app.features.voting.router import router as voting_router
+
+from app.features.wisac.router import (
+    admin_router as wisac_admin_router,
+    public_router as wisac_public_router,
 )
 
 @asynccontextmanager
@@ -54,6 +72,15 @@ app.include_router(cms_settings_public_router)
 app.include_router(cms_settings_admin_router)
 app.include_router(newsroom_public_router)
 app.include_router(newsroom_admin_router)
+app.include_router(wisac_public_router)
+app.include_router(wisac_admin_router)
+app.include_router(voting_router)
+app.include_router(gallery_public_router)
+app.include_router(gallery_admin_router)
+app.include_router(ticketing_public_router)
+app.include_router(ticketing_admin_router)
+app.include_router(talent_public_router)
+app.include_router(talent_admin_router)
 
 
 @app.get("/health")
