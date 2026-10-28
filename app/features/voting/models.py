@@ -24,6 +24,8 @@ class VoterSession(Base):
     client_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE", index=True)
+    verified_phone: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -65,6 +67,7 @@ class VoteTransaction(Base):
 
     amount: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     payment_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
 
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -134,3 +137,55 @@ class VoteAuditEvent(Base):
     metadata_json: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+
+class PhoneVerification(Base):
+    __tablename__ = "phone_verifications"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    otp_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    otp_expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    voter_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("voter_sessions.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, index=True
+    )
+
+
+class PhoneVoteUsed(Base):
+    __tablename__ = "phone_votes_used"
+    __table_args__ = (
+        UniqueConstraint("phone_number", "category_id", name="uq_phone_vote_category"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    category_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("wisac_categories.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    vote_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("vote_transactions.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )

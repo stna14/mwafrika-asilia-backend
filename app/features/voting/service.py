@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.features.voting.models import (
     FreeVoteUsed,
+    PhoneVoteUsed,
     VoteAuditEvent,
     VoteCategoryAccess,
     VoterSession,
@@ -208,6 +209,32 @@ def submit_free_vote(
             detail={"code": "CANDIDATE_INACTIVE", "message": "This candidate is not accepting votes"},
         )
 
+    # Phone verification gate
+    edition_requires_otp = bool(getattr(edition, "require_otp", True))
+    if edition_requires_otp:
+        if not voter.verified_phone:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "PHONE_NOT_VERIFIED",
+                    "message": "Please verify your phone number before voting.",
+                },
+            )
+        already = (
+            db.query(PhoneVoteUsed)
+            .filter(PhoneVoteUsed.phone_number == voter.verified_phone)
+            .filter(PhoneVoteUsed.category_id == category.id)
+            .first()
+        )
+        if already is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "PHONE_ALREADY_VOTED",
+                    "message": "This phone number has already voted in this category.",
+                },
+            )
+
     # 3. Create vote transaction
     vote = VoteTransaction(
         public_id=_new_public_id(),
@@ -241,6 +268,27 @@ def submit_free_vote(
                 "message": "You have already used your free vote in this category.",
             },
         )
+
+    # Record phone-based dedup row if OTP was required
+    if edition_requires_otp and voter.verified_phone:
+        try:
+            phone_used = PhoneVoteUsed(
+                phone_number=voter.verified_phone,
+                category_id=category.id,
+                vote_id=vote.id,
+            )
+            db.add(phone_used)
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "PHONE_ALREADY_VOTED",
+                    "message": "This phone number has already voted in this category.",
+                },
+            )
+        vote.phone_number = voter.verified_phone
 
     # 5. Increment nominee counters
     nominee.total_free_votes = (nominee.total_free_votes or 0) + 1

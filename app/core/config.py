@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 
+
+    SWALA_API_KEY: str = ""
+    SWALA_SENDER_ID: str = ""
+    SWALA_API_URL: str = "https://api.swalasms.com/v1/sendsms"
+    SWALA_MOCK: bool = True
+    OTP_EXPIRY_MINUTES: int = 5
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_MAX_REQUESTS_PER_HOUR: int = 3
+
     @property
     def database_url(self) -> str:
         return (

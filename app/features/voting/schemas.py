@@ -87,3 +87,24 @@ class AuditEventOut(BaseModel):
     relatedEntity: str
     anonymousVoterReference: str
     metadata: dict = Field(default_factory=dict)
+
+
+class OTPRequestPayload(BaseModel):
+    phone_number: str = Field(min_length=8, max_length=20)
+
+
+class OTPRequestResponse(BaseModel):
+    success: bool
+    message: str
+    expires_in_seconds: int
+
+
+class OTPVerifyPayload(BaseModel):
+    phone_number: str = Field(min_length=8, max_length=20)
+    code: str = Field(min_length=4, max_length=8)
+
+
+class OTPVerifyResponse(BaseModel):
+    success: bool
+    phone_number: str
+    message: str

@@ -2,13 +2,17 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.features.voting import service
+from app.features.voting import otp_service, service
 from app.features.voting.schemas import (
     AuditEventOut,
     CandidateOut,
     CategoriesResponse,
     CategoryAccessOut,
     CategoryOut,
+    OTPRequestPayload,
+    OTPRequestResponse,
+    OTPVerifyPayload,
+    OTPVerifyResponse,
     SessionCreateRequest,
     SessionResponse,
     SubmitVoteRequest,
@@ -193,3 +197,53 @@ def audit_events(
         )
         for e in events
     ]
+
+
+# ---------- Phone verification ----------
+
+@router.post("/otp/request", response_model=OTPRequestResponse)
+async def request_otp_endpoint(
+    payload: OTPRequestPayload,
+    request: Request,
+    token: str = Depends(_require_token),
+    db: Session = Depends(get_db),
+):
+    voter = service.get_voter_by_token(db, token)
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+
+    await otp_service.request_otp(
+        db,
+        phone_number=payload.phone_number,
+        voter=voter,
+        ip_address=ip,
+        user_agent=ua,
+    )
+
+    from app.core.config import settings
+
+    return OTPRequestResponse(
+        success=True,
+        message="Verification code sent by SMS.",
+        expires_in_seconds=settings.OTP_EXPIRY_MINUTES * 60,
+    )
+
+
+@router.post("/otp/verify", response_model=OTPVerifyResponse)
+def verify_otp_endpoint(
+    payload: OTPVerifyPayload,
+    token: str = Depends(_require_token),
+    db: Session = Depends(get_db),
+):
+    voter = service.get_voter_by_token(db, token)
+    result = otp_service.verify_otp(
+        db,
+        phone_number=payload.phone_number,
+        code=payload.code,
+        voter=voter,
+    )
+    return OTPVerifyResponse(
+        success=True,
+        phone_number=result["phone_number"],
+        message="Phone verified. You can now vote.",
+    )

@@ -37,6 +37,7 @@ class WisacEdition(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="upcoming", index=True
     )
+    require_otp: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     live_stream_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
