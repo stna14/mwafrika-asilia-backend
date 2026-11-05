@@ -47,6 +47,7 @@ def event_to_out(event: Event) -> dict:
         "title": event.title,
         "date": _format_event_date(event.event_datetime),
         "time": _format_event_time(event.event_datetime),
+        "event_datetime": event.event_datetime.isoformat(),
         "venue": event.venue,
         "description": event.description,
         "image": event.cover_image_url,
