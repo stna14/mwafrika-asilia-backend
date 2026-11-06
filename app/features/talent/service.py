@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from sqlalchemy.orm import Session
 
 from app.features.talent.models import (
@@ -10,6 +10,7 @@ from app.features.talent.models import (
     CastingApplication,
     FilmSubmission,
     VolunteerApplication,
+    PartnershipApplication,
 )
 from app.features.talent.schemas import (
     ApplicationUpdate,
@@ -24,7 +25,15 @@ MODEL_MAP = {
     "film": FilmSubmission,
     "volunteer": VolunteerApplication,
     "career": CareerApplication,
+    "partner": PartnershipApplication,
 }
+
+
+def _model(db: Session, kind: str):
+    model = MODEL_MAP.get(kind)
+    if kind == "partner" and not inspect(db.get_bind()).has_table("partnership_applications"):
+        raise HTTPException(status_code=503, detail="Partnership database migration has not been applied")
+    return model
 
 
 def _new_public_id() -> str:
@@ -32,7 +41,7 @@ def _new_public_id() -> str:
 
 
 def create_application(db: Session, kind: str, payload) -> Any:
-    model = MODEL_MAP.get(kind)
+    model = _model(db, kind)
     if model is None:
         raise HTTPException(status_code=400, detail="Unknown application type")
 
@@ -47,7 +56,7 @@ def create_application(db: Session, kind: str, payload) -> Any:
 
 
 def get_application(db: Session, kind: str, application_id: int):
-    model = MODEL_MAP.get(kind)
+    model = _model(db, kind)
     if model is None:
         raise HTTPException(status_code=400, detail="Unknown application type")
 
@@ -58,7 +67,7 @@ def get_application(db: Session, kind: str, application_id: int):
 
 
 def get_application_by_public_id(db: Session, kind: str, public_id: str):
-    model = MODEL_MAP.get(kind)
+    model = _model(db, kind)
     if model is None:
         return None
     return db.query(model).filter(model.public_id == public_id).first()
@@ -73,7 +82,7 @@ def list_applications(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list, int]:
-    model = MODEL_MAP.get(kind)
+    model = _model(db, kind)
     if model is None:
         raise HTTPException(status_code=400, detail="Unknown application type")
 
@@ -84,7 +93,9 @@ def list_applications(
     if search:
         like = f"%{search.strip()}%"
         # All four models have `full_name` OR (film: applicant_name) and email
-        if hasattr(model, "full_name"):
+        if kind == "partner":
+            query = query.filter(model.contact_name.ilike(like) | model.email.ilike(like) | model.organization.ilike(like))
+        elif hasattr(model, "full_name"):
             query = query.filter(model.full_name.ilike(like) | model.email.ilike(like))
         else:
             query = query.filter(
@@ -106,6 +117,11 @@ def update_application(
 ):
     obj = get_application(db, kind, application_id)
     data = payload.model_dump(exclude_unset=True)
+    if kind == "partner":
+        if "status" in data and data["status"] is None:
+            raise HTTPException(status_code=422, detail="Status cannot be null")
+        if data.get("admin_notes") and len(data["admin_notes"]) > 10000:
+            raise HTTPException(status_code=422, detail="Review notes must not exceed 10000 characters")
     for k, v in data.items():
         setattr(obj, k, v)
     db.commit()

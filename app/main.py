@@ -25,6 +25,7 @@ from app.features.gallery.router import (
     public_router as gallery_public_router,
 )
 from app.features.media_library.router import router as media_router
+from app.features.sponsors.router import admin_router as sponsors_admin_router, public_router as sponsors_public_router
 from app.features.newsroom.router import (
     admin_router as newsroom_admin_router,
     public_router as newsroom_public_router,
@@ -97,6 +98,8 @@ app.include_router(ticketing_admin_router)
 app.include_router(talent_public_router)
 app.include_router(talent_admin_router)
 app.include_router(media_router)
+app.include_router(sponsors_admin_router)
+app.include_router(sponsors_public_router)
 
 
 @app.get("/health")

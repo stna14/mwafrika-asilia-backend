@@ -1,4 +1,5 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
+from app.core.authorization import role_allows
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_admin(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ):
@@ -19,7 +21,7 @@ def get_current_admin(
         )
 
     payload = decode_access_token(credentials.credentials)
-    if payload is None or "sub" not in payload:
+    if payload is None or payload.get("scope") is not None or not str(payload.get("sub", "")).isdigit():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -33,4 +35,6 @@ def get_current_admin(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Admin not found or inactive",
         )
+    if not role_allows(admin.role, request.url.path, request.method):
+        raise HTTPException(status_code=403, detail="Your role does not permit this action")
     return admin

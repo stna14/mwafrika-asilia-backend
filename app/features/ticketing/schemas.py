@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 OrderStatus = Literal[
     "PENDING_PAYMENT",
@@ -68,6 +68,12 @@ class EventOut(BaseModel):
     priceLabel: str
 
 
+class EventAdminOut(EventOut):
+    event_datetime: datetime
+    publish_status: str
+    display_order: int
+
+
 # ---------- Ticket Tier ----------
 
 class TierBase(BaseModel):
@@ -113,19 +119,38 @@ class TierOut(BaseModel):
     available: int
 
 
+class TierAdminOut(TierOut):
+    quantity_total: int
+    quantity_reserved: int
+    quantity_sold: int
+    max_per_order: int
+    status: str
+    display_order: int
+
+
 # ---------- Orders ----------
 
 class OrderItemRequest(BaseModel):
-    ticketTypeId: str
-    quantity: int = Field(ge=1)
+    ticketTypeId: str = Field(pattern=r"^[1-9][0-9]*$")
+    quantity: int = Field(ge=1, le=100, strict=True)
 
 
 class CreateOrderRequest(BaseModel):
-    eventId: str
-    items: list[OrderItemRequest]
-    buyerName: str | None = None
-    buyerEmail: str | None = None
-    buyerPhone: str | None = None
+    model_config = ConfigDict(str_strip_whitespace=True)
+    eventId: str = Field(pattern=r"^[1-9][0-9]*$")
+    items: list[OrderItemRequest] = Field(min_length=1, max_length=20)
+    buyerName: str = Field(min_length=2, max_length=180)
+    buyerEmail: EmailStr = Field(max_length=180)
+    buyerPhone: str = Field(min_length=8, max_length=20, pattern=r"^[+0-9 ()-]+$")
+
+    @model_validator(mode="after")
+    def valid_items(self):
+        ids = [item.ticketTypeId for item in self.items]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Each ticket category can occur only once per order")
+        if len(''.join(c for c in self.buyerPhone if c.isdigit())) < 8:
+            raise ValueError("A valid customer phone number is required")
+        return self
 
 
 class OrderItemOut(BaseModel):
@@ -159,6 +184,7 @@ class OrderOut(BaseModel):
 
 class CreateOrderResponse(BaseModel):
     success: bool
+    checkoutToken: str | None = None
     order: OrderOut | None = None
     message: str | None = None
     code: str | None = None

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, Boolean, Date, DateTime, Integer, String, Text
+from sqlalchemy import CheckConstraint, JSON, BigInteger, Boolean, Date, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -139,3 +139,29 @@ class CareerApplication(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+# Partnership enquiries are private applications, separate from public sponsors.
+class PartnershipApplication(Base):
+    __tablename__ = "partnership_applications"
+    __table_args__ = (
+        CheckConstraint("consent = true", name="ck_partnership_consent"),
+        CheckConstraint("status IN ('submitted','under_review','shortlisted','approved','rejected')", name="ck_partnership_status"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    contact_name: Mapped[str] = mapped_column(String(180), nullable=False)
+    email: Mapped[str] = mapped_column(String(180), nullable=False, index=True)
+    phone: Mapped[str] = mapped_column(String(32), nullable=False)
+    organization: Mapped[str] = mapped_column(String(180), nullable=False)
+    organization_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    website_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    partnership_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    proposal: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_contribution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timeline: Mapped[str] = mapped_column(String(180), nullable=False)
+    proposal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    consent: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="submitted", index=True)
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

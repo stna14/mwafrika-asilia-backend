@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.features.media_library.models import MediaFile
@@ -135,6 +136,10 @@ def get_media(db: Session, media_id: int) -> MediaFile:
 def delete_media(db: Session, media_id: int) -> None:
     media = get_media(db, media_id)
     path = _ensure_upload_dir() / media.stored_filename
-    path.unlink(missing_ok=True)
     db.delete(media)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, detail='This file is referenced by content. Remove the reference first.')
+    path.unlink(missing_ok=True)

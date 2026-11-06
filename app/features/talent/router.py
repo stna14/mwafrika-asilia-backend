@@ -15,6 +15,8 @@ from app.features.talent.schemas import (
     FilmOut,
     VolunteerCreate,
     VolunteerOut,
+    PartnerCreate,
+    PartnerOut,
 )
 
 public_router = APIRouter(prefix="/api/talent", tags=["talent"])
@@ -25,6 +27,7 @@ OUT_MAP = {
     "film": FilmOut,
     "volunteer": VolunteerOut,
     "career": CareerOut,
+    "partner": PartnerOut,
 }
 
 
@@ -56,6 +59,12 @@ def submit_volunteer(payload: VolunteerCreate, db: Session = Depends(get_db)):
 def submit_career(payload: CareerCreate, db: Session = Depends(get_db)):
     obj = service.create_application(db, "career", payload)
     return ApplicationSubmitResponse(success=True, public_id=obj.public_id, message="Career application received.")
+
+
+@public_router.post("/partner", response_model=ApplicationSubmitResponse, status_code=201)
+def submit_partner(payload: PartnerCreate, db: Session = Depends(get_db)):
+    obj = service.create_application(db, "partner", payload)
+    return ApplicationSubmitResponse(success=True, public_id=obj.public_id, message="Partnership application received for review.")
 
 
 @public_router.get("/status/{kind}/{public_id}")

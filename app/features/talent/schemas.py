@@ -227,3 +227,55 @@ class ApplicationSubmitResponse(BaseModel):
     success: bool
     public_id: str | None = None
     message: str
+
+# ---------- Partnership ----------
+class PartnerCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    contact_name: str = Field(min_length=2, max_length=180)
+    email: EmailStr = Field(max_length=180)
+    phone: str = Field(min_length=5, max_length=32, pattern=r"^\+?[\d\s()\-]{5,32}$")
+    organization: str = Field(min_length=2, max_length=180)
+    organization_type: str = Field(min_length=1, max_length=80)
+    website_url: str | None = Field(default=None, max_length=500)
+    partnership_type: str = Field(min_length=1, max_length=120)
+    proposal: str = Field(min_length=10, max_length=10000)
+    proposed_contribution: str | None = Field(default=None, max_length=10000)
+    timeline: str = Field(min_length=1, max_length=180)
+    proposal_url: str | None = Field(default=None, max_length=500)
+    consent: bool = Field(strict=True)
+
+    @field_validator("consent")
+    @classmethod
+    def require_consent(cls, value):
+        if value is not True:
+            raise ValueError("Consent is required for partnership review")
+        return value
+
+    @field_validator("website_url", "proposal_url")
+    @classmethod
+    def safe_url(cls, value):
+        from urllib.parse import urlsplit
+        if not value:
+            return None
+        parts = urlsplit(value)
+        if parts.scheme.lower() not in {"http", "https"} or not parts.hostname or parts.username or parts.password or "\\" in value or any(c.isspace() or ord(c) < 32 for c in value):
+            raise ValueError("Use an HTTP(S) URL without credentials")
+        try:
+            parts.port
+        except ValueError:
+            raise ValueError("Invalid website port")
+        return value
+
+class PartnerOut(PartnerCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    public_id: str
+    status: ApplicationStatus
+    admin_notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def id_string(cls, value):
+        return str(value)
